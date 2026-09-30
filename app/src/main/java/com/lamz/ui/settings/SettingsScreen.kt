@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.TouchApp
 import androidx.compose.material.icons.rounded.VisibilityOff
@@ -77,6 +78,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onSetAsDefaultLauncher: () -> Unit,
     onOpenWallpaperPicker: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -108,6 +110,7 @@ fun SettingsScreen(
                 onBack = onBack,
                 onSetAsDefaultLauncher = onSetAsDefaultLauncher,
                 onOpenWallpaperPicker = onOpenWallpaperPicker,
+                onOpenNotificationSettings = onOpenNotificationSettings,
                 onNavigateCategories = { subScreen = SettingsSubScreen.CATEGORIES },
                 onNavigateHiddenApps = { subScreen = SettingsSubScreen.HIDDEN_APPS },
                 modifier = modifier
@@ -124,6 +127,7 @@ private fun MainSettingsContent(
     onBack: () -> Unit,
     onSetAsDefaultLauncher: () -> Unit,
     onOpenWallpaperPicker: () -> Unit,
+    onOpenNotificationSettings: () -> Unit,
     onNavigateCategories: () -> Unit,
     onNavigateHiddenApps: () -> Unit,
     modifier: Modifier = Modifier
@@ -493,6 +497,14 @@ private fun MainSettingsContent(
             icon = Icons.Rounded.VisibilityOff,
             tag = "settings_hidden_apps_nav",
             onClick = onNavigateHiddenApps
+        )
+
+        SettingsNavRow(
+            title = "Notification Dots",
+            subtitle = "Grant notification access to show dots on apps",
+            icon = Icons.Rounded.Notifications,
+            tag = "settings_notification_dots",
+            onClick = onOpenNotificationSettings
         )
 
         HorizontalDivider(

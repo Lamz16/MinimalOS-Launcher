@@ -15,6 +15,7 @@ import com.lamz.data.model.InstalledApp
 import com.lamz.data.model.LauncherTheme
 import com.lamz.data.model.SwipeAction
 import com.lamz.data.repository.InstalledAppRepository
+import com.lamz.notification.NotificationDots
 import com.lamz.util.LauncherUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -53,8 +54,15 @@ class LauncherViewModel(
         LocalUiState(query, filter, menuApp, drawerOpen, searchOpen)
     }
 
-    val uiState: StateFlow<LauncherUiState> = combine(
+    private val appsWithNotificationState = combine(
         appRepository.appsFlow,
+        NotificationDots.packages
+    ) { apps, packagesWithNotifications ->
+        apps.map { app -> app.copy(hasNotification = app.packageName in packagesWithNotifications) }
+    }
+
+    val uiState: StateFlow<LauncherUiState> = combine(
+        appsWithNotificationState,
         appRepository.categoriesFlow,
         preferencesRepository.preferencesFlow,
         localStateFlow,
@@ -183,6 +191,18 @@ class LauncherViewModel(
     fun updateCategory(category: AppCategoryEntity) {
         viewModelScope.launch {
             appRepository.updateCategory(category)
+        }
+    }
+
+    fun moveCategory(categories: List<AppCategoryEntity>, fromIndex: Int, toIndex: Int) {
+        if (fromIndex !in categories.indices || toIndex !in categories.indices) return
+
+        val reordered = categories.toMutableList().apply {
+            add(toIndex, removeAt(fromIndex))
+        }.mapIndexed { index, category -> category.copy(orderIndex = index) }
+
+        viewModelScope.launch {
+            appRepository.updateCategoryOrder(reordered)
         }
     }
 

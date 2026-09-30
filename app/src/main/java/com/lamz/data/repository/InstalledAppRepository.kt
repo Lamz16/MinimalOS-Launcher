@@ -189,11 +189,17 @@ class InstalledAppRepository(
 
     // --- CATEGORIES ---
     suspend fun createCategory(name: String): Long = withContext(Dispatchers.IO) {
-        launcherDao.insertCategory(AppCategoryEntity(name = name.trim()))
+        launcherDao.insertCategory(
+            AppCategoryEntity(name = name.trim(), orderIndex = launcherDao.getNextCategoryOrder())
+        )
     }
 
     suspend fun updateCategory(category: AppCategoryEntity) = withContext(Dispatchers.IO) {
         launcherDao.updateCategory(category)
+    }
+
+    suspend fun updateCategoryOrder(categories: List<AppCategoryEntity>) = withContext(Dispatchers.IO) {
+        launcherDao.updateCategoryOrder(categories)
     }
 
     suspend fun deleteCategory(categoryId: Long) = withContext(Dispatchers.IO) {

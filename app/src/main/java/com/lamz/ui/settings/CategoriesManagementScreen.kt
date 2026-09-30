@@ -11,10 +11,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.AlertDialog
@@ -122,7 +124,7 @@ fun CategoriesManagementScreen(
                 }
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(uiState.categories, key = { it.id }) { cat ->
+                    itemsIndexed(uiState.categories, key = { _, category -> category.id }) { index, cat ->
                         val count = uiState.categoryAppsMap[cat.id]?.size ?: 0
                         Row(
                             modifier = Modifier
@@ -140,6 +142,28 @@ fun CategoriesManagementScreen(
                                     text = "$count ${if (count == 1) "app" else "apps"}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.moveCategory(uiState.categories, index, index - 1) },
+                                enabled = index > 0,
+                                modifier = Modifier.testTag("move_category_up_${cat.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ArrowUpward,
+                                    contentDescription = "Move category up",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(
+                                onClick = { viewModel.moveCategory(uiState.categories, index, index + 1) },
+                                enabled = index < uiState.categories.lastIndex,
+                                modifier = Modifier.testTag("move_category_down_${cat.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.ArrowDownward,
+                                    contentDescription = "Move category down",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             IconButton(

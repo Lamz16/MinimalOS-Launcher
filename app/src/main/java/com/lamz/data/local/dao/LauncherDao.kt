@@ -56,8 +56,19 @@ interface LauncherDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategory(category: AppCategoryEntity): Long
 
+    @Query("SELECT COALESCE(MAX(orderIndex), -1) + 1 FROM app_categories")
+    suspend fun getNextCategoryOrder(): Int
+
     @Update
     suspend fun updateCategory(category: AppCategoryEntity)
+
+    @Update
+    suspend fun updateCategories(categories: List<AppCategoryEntity>)
+
+    @Transaction
+    suspend fun updateCategoryOrder(categories: List<AppCategoryEntity>) {
+        updateCategories(categories)
+    }
 
     @Query("DELETE FROM app_categories WHERE id = :categoryId")
     suspend fun deleteCategory(categoryId: Long)

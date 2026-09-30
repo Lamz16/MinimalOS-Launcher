@@ -13,6 +13,7 @@ data class InstalledApp(
     val isFavorite: Boolean = false,
     val isHidden: Boolean = false,
     val categoryIds: Set<Long> = emptySet(),
+    val hasNotification: Boolean = false,
     val installTime: Long = 0L,
     val iconBitmap: ImageBitmap? = null
 ) {

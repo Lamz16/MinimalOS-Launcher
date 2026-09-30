@@ -120,7 +120,10 @@ class MainActivity : ComponentActivity() {
                                 viewModel = viewModel,
                                 onBack = { currentScreen = CurrentScreen.HOME },
                                 onSetAsDefaultLauncher = ::requestDefaultHomeRole,
-                                onOpenWallpaperPicker = { LauncherUtils.openWallpaperPicker(this@MainActivity) }
+                                onOpenWallpaperPicker = { LauncherUtils.openWallpaperPicker(this@MainActivity) },
+                                onOpenNotificationSettings = {
+                                    LauncherUtils.openNotificationListenerSettings(this@MainActivity)
+                                }
                             )
                         }
                     }

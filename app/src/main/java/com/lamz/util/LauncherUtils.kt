@@ -101,6 +101,17 @@ object LauncherUtils {
         }
     }
 
+    fun openNotificationListenerSettings(context: Context) {
+        try {
+            context.startActivity(
+                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        } catch (_: Exception) {
+            Toast.makeText(context, "Cannot open notification access settings", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     fun isDefaultLauncher(context: Context): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
