@@ -1,0 +1,276 @@
+package com.example.ui.viewmodel
+
+import android.content.Context
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.example.data.local.LauncherDatabase
+import com.example.data.local.LauncherPreferencesRepository
+import com.example.data.local.entity.AppCategoryEntity
+import com.example.data.model.AppDisplayMode
+import com.example.data.model.DoubleTapAction
+import com.example.data.model.FontSize
+import com.example.data.model.IconSize
+import com.example.data.model.InstalledApp
+import com.example.data.model.LauncherPreferences
+import com.example.data.model.LauncherTheme
+import com.example.data.model.SwipeAction
+import com.example.data.repository.InstalledAppRepository
+import com.example.util.LauncherUtils
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+class LauncherViewModel(
+    private val appRepository: InstalledAppRepository,
+    private val preferencesRepository: LauncherPreferencesRepository
+) : ViewModel() {
+
+    private val _searchQuery = MutableStateFlow("")
+    private val _selectedCategoryFilter = MutableStateFlow<Long?>(null)
+    private val _activeContextMenuApp = MutableStateFlow<InstalledApp?>(null)
+    private val _isAppDrawerOpen = MutableStateFlow(false)
+    private val _isSearchOpen = MutableStateFlow(false)
+    private val _isDefaultLauncher = MutableStateFlow(true)
+
+    private data class LocalUiState(
+        val searchQuery: String = "",
+        val categoryFilter: Long? = null,
+        val contextMenuApp: InstalledApp? = null,
+        val isDrawerOpen: Boolean = false,
+        val isSearchOpen: Boolean = false
+    )
+
+    private val localStateFlow = combine(
+        _searchQuery,
+        _selectedCategoryFilter,
+        _activeContextMenuApp,
+        _isAppDrawerOpen,
+        _isSearchOpen
+    ) { query, filter, menuApp, drawerOpen, searchOpen ->
+        LocalUiState(query, filter, menuApp, drawerOpen, searchOpen)
+    }
+
+    val uiState: StateFlow<LauncherUiState> = combine(
+        appRepository.appsFlow,
+        appRepository.categoriesFlow,
+        preferencesRepository.preferencesFlow,
+        localStateFlow,
+        _isDefaultLauncher
+    ) { rawApps, categories, preferences, local, isDefault ->
+        val visible = rawApps.filter { !it.isHidden }
+        val favorites = visible.filter { it.isFavorite }
+        val hidden = rawApps.filter { it.isHidden }
+
+        val categoryMap = categories.associate { category ->
+            category.id to visible.filter { app -> app.categoryIds.contains(category.id) }
+        }
+
+        val filteredVisible = if (local.categoryFilter != null) {
+            visible.filter { it.categoryIds.contains(local.categoryFilter) }
+        } else {
+            visible
+        }
+
+        val searchResults = if (local.searchQuery.isBlank()) {
+            emptyList()
+        } else {
+            val q = local.searchQuery.trim().lowercase()
+            visible.filter {
+                it.displayLabel.lowercase().contains(q) || it.packageName.lowercase().contains(q)
+            }
+        }
+
+        LauncherUiState(
+            allApps = rawApps,
+            visibleApps = filteredVisible,
+            favoriteApps = favorites,
+            hiddenApps = hidden,
+            categories = categories,
+            categoryAppsMap = categoryMap,
+            preferences = preferences,
+            searchQuery = local.searchQuery,
+            searchResults = searchResults,
+            selectedCategoryFilter = local.categoryFilter,
+            activeContextMenuApp = local.contextMenuApp,
+            isAppDrawerOpen = local.isDrawerOpen,
+            isSearchOpen = local.isSearchOpen,
+            isDefaultLauncher = isDefault
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = LauncherUiState()
+    )
+
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
+    fun selectCategoryFilter(categoryId: Long?) {
+        _selectedCategoryFilter.value = categoryId
+    }
+
+    fun openContextMenu(app: InstalledApp) {
+        _activeContextMenuApp.value = app
+    }
+
+    fun closeContextMenu() {
+        _activeContextMenuApp.value = null
+    }
+
+    fun setAppDrawerOpen(open: Boolean) {
+        _isAppDrawerOpen.value = open
+        if (!open) {
+            _searchQuery.value = ""
+        }
+    }
+
+    fun setSearchOpen(open: Boolean) {
+        _isSearchOpen.value = open
+        if (!open) {
+            _searchQuery.value = ""
+        }
+    }
+
+    fun checkDefaultLauncher(context: Context) {
+        _isDefaultLauncher.value = LauncherUtils.isDefaultLauncher(context)
+    }
+
+    fun refreshApps() {
+        viewModelScope.launch {
+            appRepository.refreshInstalledApps()
+        }
+    }
+
+    // --- FAVORITES & HIDDEN ---
+    fun toggleFavorite(app: InstalledApp) {
+        viewModelScope.launch {
+            appRepository.setFavorite(app.packageName, !app.isFavorite)
+        }
+    }
+
+    fun toggleHide(app: InstalledApp) {
+        viewModelScope.launch {
+            appRepository.setHidden(app.packageName, !app.isHidden)
+            closeContextMenu()
+        }
+    }
+
+    fun unhideApp(packageName: String) {
+        viewModelScope.launch {
+            appRepository.setHidden(packageName, false)
+        }
+    }
+
+    fun renameApp(app: InstalledApp, newLabel: String) {
+        viewModelScope.launch {
+            appRepository.setCustomLabel(app.packageName, newLabel)
+            closeContextMenu()
+        }
+    }
+
+    // --- CATEGORIES ---
+    fun createCategory(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch {
+            appRepository.createCategory(name)
+        }
+    }
+
+    fun updateCategory(category: AppCategoryEntity) {
+        viewModelScope.launch {
+            appRepository.updateCategory(category)
+        }
+    }
+
+    fun deleteCategory(categoryId: Long) {
+        viewModelScope.launch {
+            if (_selectedCategoryFilter.value == categoryId) {
+                _selectedCategoryFilter.value = null
+            }
+            appRepository.deleteCategory(categoryId)
+        }
+    }
+
+    fun toggleAppCategory(app: InstalledApp, categoryId: Long) {
+        viewModelScope.launch {
+            if (app.categoryIds.contains(categoryId)) {
+                appRepository.removeAppFromCategory(categoryId, app.packageName)
+            } else {
+                appRepository.addAppToCategory(categoryId, app.packageName)
+            }
+        }
+    }
+
+    // --- PREFERENCES SETTERS ---
+    fun setTheme(theme: LauncherTheme) {
+        viewModelScope.launch { preferencesRepository.setTheme(theme) }
+    }
+
+    fun setDisplayMode(mode: AppDisplayMode) {
+        viewModelScope.launch { preferencesRepository.setDisplayMode(mode) }
+    }
+
+    fun setIconSize(size: IconSize) {
+        viewModelScope.launch { preferencesRepository.setIconSize(size) }
+    }
+
+    fun setFontSize(size: FontSize) {
+        viewModelScope.launch { preferencesRepository.setFontSize(size) }
+    }
+
+    fun setShowClock(show: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowClock(show) }
+    }
+
+    fun setShowDate(show: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowDate(show) }
+    }
+
+    fun setIs24HourFormat(is24: Boolean) {
+        viewModelScope.launch { preferencesRepository.setIs24HourFormat(is24) }
+    }
+
+    fun setSwipeDownAction(action: SwipeAction) {
+        viewModelScope.launch { preferencesRepository.setSwipeDownAction(action) }
+    }
+
+    fun setSwipeUpAction(action: SwipeAction) {
+        viewModelScope.launch { preferencesRepository.setSwipeUpAction(action) }
+    }
+
+    fun setDoubleTapAction(action: DoubleTapAction) {
+        viewModelScope.launch { preferencesRepository.setDoubleTapAction(action) }
+    }
+
+    fun setShowFavoritesOnHome(show: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowFavoritesOnHome(show) }
+    }
+
+    fun setShowCategoriesOnHome(show: Boolean) {
+        viewModelScope.launch { preferencesRepository.setShowCategoriesOnHome(show) }
+    }
+
+    companion object {
+        fun provideFactory(context: Context): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    val appContext = context.applicationContext
+                    val database = LauncherDatabase.getInstance(appContext)
+                    val dao = database.launcherDao()
+                    val prefRepo = LauncherPreferencesRepository(appContext)
+                    val appRepo = InstalledAppRepository(
+                        context = appContext,
+                        launcherDao = dao,
+                        externalScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+                    )
+                    return LauncherViewModel(appRepo, prefRepo) as T
+                }
+            }
+    }
+}

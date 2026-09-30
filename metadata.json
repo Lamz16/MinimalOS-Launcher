@@ -1,0 +1,6 @@
+{
+  "name": "MinimalOS",
+  "description": "Ultra-fast, distraction-free minimalist Android launcher with AMOLED mode, custom categories, gestures, and zero tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
