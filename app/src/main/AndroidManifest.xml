@@ -3,8 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permissions required for Launcher functionality -->
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
         tools:ignore="QueryAllPackagesPermission" />
+    <uses-permission android:name="android.permission.READ_WALLPAPER_INTERNAL"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES" />
 
     <queries>
@@ -28,7 +31,7 @@
             android:exported="true"
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
-            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
             android:windowSoftInputMode="adjustResize"
             android:label="@string/app_name"
             android:theme="@style/Theme.MyApplication">
@@ -36,6 +39,10 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Keep the normal app entry point separate from the HOME handler. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>

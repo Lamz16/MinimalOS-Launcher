@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Properties
 
 plugins {
   alias(libs.plugins.android.application)
@@ -9,13 +10,15 @@ plugins {
 }
 
 android {
-  namespace = "com.example"
-  compileSdk { version = release(36) { minorApiLevel = 1 } }
+  namespace = "com.lamz"
+  compileSdk {
+    version = release(37)
+  }
 
   defaultConfig {
     applicationId = "com.aistudio.minimalos.kpxlnq"
     minSdk = 24
-    targetSdk = 36
+    targetSdk = 37
     versionCode = 1
     versionName = "1.0"
 
@@ -24,11 +27,26 @@ android {
 
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystorePropertiesFile = rootProject.file("keystore.properties")
+        val props = Properties()
+        keystorePropertiesFile.inputStream().use { stream ->
+          props.load(stream)
+        }
+        val sf: String? = props.getProperty("storeFile")
+        val sp: String? = props.getProperty("storePassword")
+        val ka: String? = props.getProperty("keyAlias")
+        val kp: String? = props.getProperty("keyPassword")
+        if (sf.isNullOrBlank() || sp.isNullOrBlank() || ka.isNullOrBlank() || kp.isNullOrBlank()) {
+          throw GradleException("Release signing configuration is incomplete. Check keystore.properties.")
+        }
+        val keystoreFile = if (file(sf).isAbsolute) file(sf) else rootProject.file(sf)
+        if (!keystoreFile.exists()) {
+          throw GradleException("Keystore file defined in keystore.properties does not exist: $keystoreFile")
+        }
+        storeFile = keystoreFile
+        storePassword = sp
+        keyAlias = ka
+        keyPassword = kp
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")

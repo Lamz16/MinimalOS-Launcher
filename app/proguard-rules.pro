@@ -1,7 +1,7 @@
 # ProGuard / R8 rules for MinimalOS Launcher
 
 # Keep launcher MainActivity
--keep class com.example.MainActivity { *; }
+-keep class com.lamz.MainActivity { *; }
 
 # Room
 -keepclassmembers class * extends androidx.room.RoomDatabase {
